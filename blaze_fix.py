@@ -13,7 +13,29 @@ def fix_blaze(path, star, datalist):
 
 if __name__ == "__main__":
     datapath = "/Users/mdecleir/Documents/Depletions/HST_data/"
-    star = "HD203938"
+    stars = [
+        "HD014434",
+        "HD037903",
+        "HD038087",
+        "HD073882",
+        "HD093250",
+        "HD149404",
+        "HD152249",
+        "HD152723",
+        "HD168076",
+        "HD190603",
+        "HD192639",
+        "HD197770",
+        "HD200775",
+        "HD203938",
+        "HD206267",
+        "HD216898",
+        "HD239729",
+    ]
 
-    datalist = glob.glob(datapath + star + "/*x1d.fits")
-    fix_blaze(datapath + star + "/", star, datalist)
+    for star in stars:
+        datalist = glob.glob(datapath + star + "/*x1d.fits")
+        if len(datalist) > 0:
+            fix_blaze(datapath + star + "/", star, datalist)
+        else:
+            print(star + " has no x1d data available to perform a blaze fix.")
