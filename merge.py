@@ -68,7 +68,7 @@ def merge_orders(filename):
         new_data[j] = func(new_waves)
 
     # save the new data as an Astropy Table
-    new_data_table = Table(new_data, names=["FLUX", "ERROR", "DQ", "NET"])
+    new_data_table = Table(new_data, names=["FLUX", "ERROR", "NET"])
 
     # calculate the sensivity
     new_data_table["SENS"] = new_data_table["FLUX"] / new_data_table["NET"]
