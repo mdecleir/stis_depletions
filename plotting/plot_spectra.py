@@ -38,10 +38,10 @@ def rebin(waves, fluxes, rebin_fac):
     Parameters
     ----------
     waves : np.ndarray
-        Array with the wavelengths of the spectrum
+        Numpy array with the wavelengths of the spectrum
 
     fluxes : np.ndarray
-        Array with the fluxes of the spectrum
+        Numpy array with the fluxes of the spectrum
 
     rebin_fac : int
         The factor by which to rebin the spectrum
@@ -53,7 +53,7 @@ def rebin(waves, fluxes, rebin_fac):
     # calculate the number of bins
     nbins = int(len(waves) / rebin_fac)
 
-    # mask NaNs from the fluxes, otherwise every bin with at least one NaN value would have NaN as the mean flux
+    # mask NaNs from the fluxes before rebinning, otherwise every bin with at least one NaN value would have NaN as the mean flux
     # also mask the corresponding wavelengths, otherwise all the wavelengths in a bin would be used to calculate the mean wavelength, while only the non-NaN fluxes would be used to calculate the mean flux
     mask = ~np.isnan(fluxes)
     waves = waves[mask]
