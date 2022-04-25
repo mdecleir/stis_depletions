@@ -89,9 +89,14 @@ def norm(datapath, star, linewaves, degree):
                         fitmask *= ~np.isnan(fluxes)
 
                         # fit the continuum with a Legendre polynomial
-                        coefs = np.polynomial.legendre.legfit(
-                            velos[fitmask], fluxes[fitmask], degree
+                        coefs, diags = np.polynomial.legendre.legfit(
+                            velos[fitmask], fluxes[fitmask], degree, full=True
                         )
+                        # obtain the sum of squared residuals of the fit
+                        sqres = diags[0][0]
+                        print("Sum of squared residuals: ", sqres)
+
+                        # evaluate the continuum at all velocities in the fitting range, i.e. from the minimum to the maximum velocity used in the fitting (including velocities in between, that were not used in the continuum fit)
                         rangemask = (velos > np.min(vmins)) & (velos < np.max(vmaxs))
                         cont = np.polynomial.legendre.legval(velos[rangemask], coefs)
 
