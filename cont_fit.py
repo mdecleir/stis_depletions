@@ -82,23 +82,24 @@ def norm(datapath, star, linewaves, degree):
                         rows = windows["line_wave"] == lwave
                         vmins = windows["vmin"][rows]
                         vmaxs = windows["vmax"][rows]
-                        mask = np.full(len(velos), False)
+                        fitmask = np.full(len(velos), False)
                         for vmin, vmax in zip(vmins, vmaxs):
-                            mask += (velos > vmin) & (velos < vmax)
+                            fitmask += (velos > vmin) & (velos < vmax)
                         # exclude NaNs from the fitting
-                        mask *= ~np.isnan(fluxes)
+                        fitmask *= ~np.isnan(fluxes)
 
                         # fit the continuum with a Legendre polynomial
                         coefs = np.polynomial.legendre.legfit(
-                            velos[mask], fluxes[mask], degree
+                            velos[fitmask], fluxes[fitmask], degree
                         )
-                        cont = np.polynomial.legendre.legval(velos[mask], coefs)
+                        rangemask = (velos > np.min(vmins)) & (velos < np.max(vmaxs))
+                        cont = np.polynomial.legendre.legval(velos[rangemask], coefs)
 
                         # add polynomial coefficients to the table
                         coeff_table.add_row(np.insert(coefs, 0, [lwave, degree]))
 
                         # normalize the spectrum around the line
-                        norm = fluxes[mask] / cont
+                        # norm = fluxes[mask] / cont
 
                         # make a plot
                         fix, ax = plt.subplots()
@@ -106,15 +107,16 @@ def norm(datapath, star, linewaves, degree):
                         plt.plot(velos, fluxes, c="k", alpha=0.7, label="data")
                         # plot the continuum fit
                         plt.plot(
-                            velos[mask],
+                            velos[rangemask],
                             cont,
                             c="tab:orange",
                             label="cont. fit (" + str(degree) + ")",
                         )
+
                         # plot the data points that were used in the continuum fit
                         plt.plot(
-                            velos[mask],
-                            fluxes[mask],
+                            velos[fitmask],
+                            fluxes[fitmask],
                             "r.",
                             markersize=2.5,
                             alpha=0.6,
@@ -122,7 +124,7 @@ def norm(datapath, star, linewaves, degree):
                         )
                         # finalize and save the plot
                         plt.xlim(-510, 510)
-                        plt.ylim([0, 1.5 * np.median(fluxes[mask])])
+                        plt.ylim([0, 1.5 * np.median(fluxes[fitmask])])
                         plt.xlabel("velocity (km/s)", fontsize=fs)
                         plt.ylabel(
                             r"flux ($ergs\ cm^{-2}\ s^{-1}\ \AA^{-1}$)", fontsize=fs
