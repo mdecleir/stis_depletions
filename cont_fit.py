@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from plotting.plot_spectra import velo
 
 
-def norm(datapath, star, linewaves, degree):
+def norm(datapath, star, linewaves):
     """
     Function to normalize the spectrum around every line
 
@@ -23,11 +23,8 @@ def norm(datapath, star, linewaves, degree):
     star : string
         Name of the star
 
-    linewaves : np
+    linewaves : np.ndarray
         Wavelengths of the lines
-
-    degree:
-        Degree of the polynomial
 
     Returns
     -------
@@ -42,8 +39,8 @@ def norm(datapath, star, linewaves, degree):
         windows = ascii.read(window_file)
 
         # create the Table to store the continuum coefficients
-        ncols = degree + 1
-        colnames = ["C" + str(i + 1) for i in range(ncols)]
+        ncols = max(windows["degree"]) + 1
+        colnames = ["c" + str(i) for i in range(ncols)]
         colnames.insert(0, "line_wave")
         colnames.insert(1, "deg")
         coeff_table = Table(names=colnames)
@@ -89,6 +86,13 @@ def norm(datapath, star, linewaves, degree):
                         fitmask *= ~np.isnan(fluxes)
 
                         # fit the continuum with a Legendre polynomial
+                        degree = windows["degree"][rows][0]
+                        if degree == 0:
+                            print(
+                                "Please, add polynomial degree for line with wavelength "
+                                + str(lwave)
+                                + " \u212B to the windows file."
+                            )
                         coefs, diags = np.polynomial.legendre.legfit(
                             velos[fitmask], fluxes[fitmask], degree, full=True
                         )
@@ -101,6 +105,8 @@ def norm(datapath, star, linewaves, degree):
                         cont = np.polynomial.legendre.legval(velos[rangemask], coefs)
 
                         # add polynomial coefficients to the table
+                        if len(coefs) < ncols:
+                            coefs = np.pad(coefs, (0, ncols - len(coefs)))
                         coeff_table.add_row(np.insert(coefs, 0, [lwave, degree]))
 
                         # normalize the spectrum around the line
@@ -167,7 +173,5 @@ if __name__ == "__main__":
     line_waves = np.array([1239.9253, 1240.3947, 1355.5977, 2249.8768, 2260.7805])
 
     # normalize the spectrum around every line
-    degree = 9
-
     for star in stars:
-        norm(datapath, star, line_waves, degree)
+        norm(datapath, star, line_waves)
