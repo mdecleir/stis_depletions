@@ -11,6 +11,73 @@ from matplotlib import pyplot as plt
 from plotting.plot_spectra import velo
 
 
+def plot_cont(velos, fluxes, cont, degree, fitmask, rangemask, outname):
+    """
+    Function to plot the continuum flux
+
+    Parameters
+    ----------
+    velos : np.ndarray
+        Velocities (in km/s)
+
+    fluxes : np.ndarray
+        Fluxes (in erg/s/cm2/AA)
+
+    cont : np.ndarray
+        Continuum flux at velocities in rangemask
+
+    degree : int
+        Degree used for the fit
+
+    fitmask : np.ndarray
+        Mask for data points used in the fitting
+
+    rangemask : np.ndarray
+        Mask for data points between minimum and maximum velocity
+
+    outname : string
+        Path and name of the plot
+
+    Returns
+    -------
+    Plot with data fluxes and continuum fit
+    """
+    # create a plot
+    fix, ax = plt.subplots()
+
+    # plot the data
+    plt.plot(velos, fluxes, c="k", alpha=0.7, label="data")
+
+    # plot the continuum fit
+    plt.plot(
+        velos[rangemask],
+        cont,
+        c="tab:orange",
+        label="cont. fit (" + str(degree) + ")",
+    )
+
+    # plot the data points that were used in the fitting
+    plt.plot(
+        velos[fitmask],
+        fluxes[fitmask],
+        "r.",
+        markersize=2.5,
+        alpha=0.6,
+        label="fit points",
+    )
+
+    # finalize and save the plot
+    plt.xlim(-510, 510)
+    plt.ylim([0, 1.5 * np.median(fluxes[fitmask])])
+    plt.xlabel(r"velocity (km s$^{-1}$)", fontsize=fs)
+    plt.ylabel(r"flux ($erg\ cm^{-2}\ s^{-1}\ \AA^{-1}$)", fontsize=fs)
+    plt.legend(loc=3)
+    plt.savefig(
+        outname,
+        bbox_inches="tight",
+    )
+
+
 def norm(datapath, star, linewaves):
     """
     Function to normalize the spectrum around every line
@@ -28,7 +95,7 @@ def norm(datapath, star, linewaves):
 
     Returns
     -------
-    Plot with the continuum
+    Plot with the continuum fit
     """
     # check if the file with windows to fit the continuum exists
     window_file = datapath + star + "/" + star + "_cont_win.dat"
@@ -112,36 +179,14 @@ def norm(datapath, star, linewaves):
                         # normalize the spectrum around the line
                         # norm = fluxes[mask] / cont
 
-                        # make a plot
-                        fix, ax = plt.subplots()
-                        # plot the data
-                        plt.plot(velos, fluxes, c="k", alpha=0.7, label="data")
-                        # plot the continuum fit
-                        plt.plot(
-                            velos[rangemask],
+                        # plot the continuum
+                        plot_cont(
+                            velos,
+                            fluxes,
                             cont,
-                            c="tab:orange",
-                            label="cont. fit (" + str(degree) + ")",
-                        )
-
-                        # plot the data points that were used in the continuum fit
-                        plt.plot(
-                            velos[fitmask],
-                            fluxes[fitmask],
-                            "r.",
-                            markersize=2.5,
-                            alpha=0.6,
-                            label="fit points",
-                        )
-                        # finalize and save the plot
-                        plt.xlim(-510, 510)
-                        plt.ylim([0, 1.5 * np.median(fluxes[fitmask])])
-                        plt.xlabel("velocity (km/s)", fontsize=fs)
-                        plt.ylabel(
-                            r"flux ($ergs\ cm^{-2}\ s^{-1}\ \AA^{-1}$)", fontsize=fs
-                        )
-                        plt.legend(loc=3)
-                        plt.savefig(
+                            degree,
+                            fitmask,
+                            rangemask,
                             datapath
                             + star
                             + "/"
@@ -151,8 +196,8 @@ def norm(datapath, star, linewaves):
                             + "_"
                             + str(degree)
                             + ".pdf",
-                            bbox_inches="tight",
                         )
+
         # finalize and save the table
         coeff_table["deg"] = coeff_table["deg"].astype(int)
         coeff_table.write(
