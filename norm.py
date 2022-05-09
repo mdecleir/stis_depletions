@@ -1,4 +1,4 @@
-# cont_fit.py: Script to fit the continuum flux around a line and normalize the spectrum around that line
+# norm.py: Script to fit the continuum flux around a line and normalize the spectrum around that line
 
 import glob
 import os
