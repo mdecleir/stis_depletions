@@ -1,4 +1,4 @@
-# cont_fit.py: Script to fit the continuum flux around a line
+# cont_fit.py: Script to fit the continuum flux around a line and normalize the spectrum around that line
 
 import glob
 import os
@@ -27,7 +27,7 @@ def plot_cont(velos, fluxes, cont, degree, fitmask, rangemask, outname):
         Continuum flux at velocities in rangemask
 
     degree : int
-        Degree used for the fit
+        Degree of the polynomial used for the continuum fit
 
     fitmask : np.ndarray
         Mask for data points used in the fitting
@@ -78,7 +78,105 @@ def plot_cont(velos, fluxes, cont, degree, fitmask, rangemask, outname):
     )
 
 
-def norm(datapath, star, linewaves):
+def norm(velos, fluxes, lwave, windows, outname):
+    """
+    Function to normalize the spectrum around the given line
+
+    Parameters
+    ----------
+    velos : np.ndarray
+        Velocities (in km/s)
+
+    fluxes : np.ndarray
+        Fluxes at velos (in erg/s/cm2/Angstrom)
+
+    lwave : float
+        Wavelength (in Angstrom) of absorption line
+
+    windows : Astropy Table
+        Table with the continuum windows
+
+    outname : string
+        Path and name of the plot
+
+    Returns
+    -------
+    degree : int
+        Degree of the polynomial used for the continuum fit
+
+    coefs : np.ndarray
+        Array of polynomial coefficients of the continuum fit
+
+    cont : np.ndarray
+        Fitted continuum flux (in erg/s/cm2/Angstrom) at velos in a certain range
+
+    norm_fluxes : np.ndarray
+        Normalized flux (in erg/s/cm2/Angstrom) at velos in a certain range
+    """
+    # check if the line is included in the windows file
+    if not lwave in windows["line_wave"]:
+        print(
+            "Please, add continuum windows for line with wavelength "
+            + str(lwave)
+            + " \u212B to the windows file."
+        )
+        # open a plot to determine appropriate continuum windows
+        fig, ax = plt.subplots()
+        plt.plot(velos, fluxes, "k")
+        plt.xlim([-550, 550])
+        plt.ylim(0, 1.5 * np.nanmedian(fluxes))
+        plt.text(0.84, 0.9, lwave, transform=ax.transAxes)
+        plt.show()
+    else:
+        # obtain the velocities in the fit windows
+        rows = windows["line_wave"] == lwave
+        vmins = windows["vmin"][rows]
+        vmaxs = windows["vmax"][rows]
+        fitmask = np.full(len(velos), False)
+        for vmin, vmax in zip(vmins, vmaxs):
+            fitmask += (velos > vmin) & (velos < vmax)
+        # exclude NaNs from the fitting
+        fitmask *= ~np.isnan(fluxes)
+
+        # fit the continuum with a Legendre polynomial
+        # obtain the degree of the polynomial to fit
+        degree = windows["degree"][rows][0]
+        if degree == 0:
+            print(
+                "Please, add polynomial degree for line with wavelength "
+                + str(lwave)
+                + " \u212B to the windows file."
+            )
+        else:
+            coefs, diags = np.polynomial.legendre.legfit(
+                velos[fitmask], fluxes[fitmask], degree, full=True
+            )
+            # obtain the sum of squared residuals of the fit
+            sqres = diags[0][0]
+            print("Sum of squared residuals: ", sqres)
+
+            # evaluate the continuum at all velocities in the fitting range, i.e. from the minimum to the maximum velocity used in the fitting (including velocities in between, that were not used in the continuum fit)
+            rangemask = (velos > np.min(vmins)) & (velos < np.max(vmaxs))
+            cont = np.polynomial.legendre.legval(velos[rangemask], coefs)
+
+            # normalize the spectrum to the continuum
+            norm_fluxes = fluxes[rangemask] / cont
+
+            # plot the continuum
+            plot_cont(
+                velos,
+                fluxes,
+                cont,
+                degree,
+                fitmask,
+                rangemask,
+                outname.replace(".pdf", str(degree) + ".pdf"),
+            )
+
+    return degree, coefs, cont, norm_fluxes
+
+
+def norm_all(datapath, star, linewaves):
     """
     Function to normalize the spectrum around every line
 
@@ -127,76 +225,25 @@ def norm(datapath, star, linewaves):
                     # convert the wavelengths to velocities
                     velos = velo(waves, lwave)
 
-                    # check if the line is included in the windows file
-                    if not lwave in windows["line_wave"]:
-                        print(
-                            "Please, add continuum windows for line with wavelength "
-                            + str(lwave)
-                            + " \u212B to the windows file."
-                        )
-                        # open a plot to determine appropriate continuum windows
-                        fig, ax = plt.subplots()
-                        plt.plot(velos, fluxes, "k")
-                        plt.xlim([-550, 550])
-                        plt.ylim(0, 1.5 * np.nanmedian(fluxes))
-                        plt.text(0.84, 0.9, lwave, transform=ax.transAxes)
-                        plt.show()
-                    else:
-                        # obtain the velocities in the fit windows
-                        rows = windows["line_wave"] == lwave
-                        vmins = windows["vmin"][rows]
-                        vmaxs = windows["vmax"][rows]
-                        fitmask = np.full(len(velos), False)
-                        for vmin, vmax in zip(vmins, vmaxs):
-                            fitmask += (velos > vmin) & (velos < vmax)
-                        # exclude NaNs from the fitting
-                        fitmask *= ~np.isnan(fluxes)
+                    # normalize the spectrum around the line
+                    degree, coefs, cont, norm_fluxes = norm(
+                        velos,
+                        fluxes,
+                        lwave,
+                        windows,
+                        datapath
+                        + star
+                        + "/"
+                        + star
+                        + "_cont_fit_"
+                        + str(int(lwave))
+                        + "_.pdf",
+                    )
 
-                        # fit the continuum with a Legendre polynomial
-                        degree = windows["degree"][rows][0]
-                        if degree == 0:
-                            print(
-                                "Please, add polynomial degree for line with wavelength "
-                                + str(lwave)
-                                + " \u212B to the windows file."
-                            )
-                        coefs, diags = np.polynomial.legendre.legfit(
-                            velos[fitmask], fluxes[fitmask], degree, full=True
-                        )
-                        # obtain the sum of squared residuals of the fit
-                        sqres = diags[0][0]
-                        print("Sum of squared residuals: ", sqres)
-
-                        # evaluate the continuum at all velocities in the fitting range, i.e. from the minimum to the maximum velocity used in the fitting (including velocities in between, that were not used in the continuum fit)
-                        rangemask = (velos > np.min(vmins)) & (velos < np.max(vmaxs))
-                        cont = np.polynomial.legendre.legval(velos[rangemask], coefs)
-
-                        # add polynomial coefficients to the table
-                        if len(coefs) < ncols:
-                            coefs = np.pad(coefs, (0, ncols - len(coefs)))
-                        coeff_table.add_row(np.insert(coefs, 0, [lwave, degree]))
-
-                        # normalize the spectrum around the line
-                        # norm = fluxes[mask] / cont
-
-                        # plot the continuum
-                        plot_cont(
-                            velos,
-                            fluxes,
-                            cont,
-                            degree,
-                            fitmask,
-                            rangemask,
-                            datapath
-                            + star
-                            + "/"
-                            + star
-                            + "_cont_fit_"
-                            + str(int(lwave))
-                            + "_"
-                            + str(degree)
-                            + ".pdf",
-                        )
+                    # add polynomial coefficients to the table
+                    if len(coefs) < ncols:
+                        coefs = np.pad(coefs, (0, ncols - len(coefs)))
+                    coeff_table.add_row(np.insert(coefs, 0, [lwave, degree]))
 
         # finalize and save the table
         coeff_table["deg"] = coeff_table["deg"].astype(int)
@@ -219,4 +266,4 @@ if __name__ == "__main__":
 
     # normalize the spectrum around every line
     for star in stars:
-        norm(datapath, star, line_waves)
+        norm_all(datapath, star, line_waves)
