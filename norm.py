@@ -48,7 +48,7 @@ def plot_cont(velos, fluxes, cont, degree, fitmask, rangemask, outname):
     # plot the data
     plt.plot(velos, fluxes, c="k", alpha=0.7, label="data")
 
-    # plot the continuum fit
+    # plot the fitted continuum
     plt.plot(
         velos[rangemask],
         cont,
@@ -67,6 +67,7 @@ def plot_cont(velos, fluxes, cont, degree, fitmask, rangemask, outname):
     )
 
     # finalize and save the plot
+    fs = 18
     plt.xlim(-510, 510)
     plt.ylim([0, 1.5 * np.median(fluxes[fitmask])])
     plt.xlabel(r"velocity (km s$^{-1}$)", fontsize=fs)
@@ -162,7 +163,7 @@ def norm(velos, fluxes, lwave, windows, outname):
             # normalize the spectrum to the continuum
             norm_fluxes = fluxes[rangemask] / cont
 
-            # plot the continuum
+            # plot the continuum at all velocities in the fitting range, i.e. from the minimum to the maximum velocity used in the fitting (including velocities in between, that were not used in the continuum fit)
             plot_cont(
                 velos,
                 fluxes,
@@ -173,7 +174,7 @@ def norm(velos, fluxes, lwave, windows, outname):
                 outname.replace(".pdf", str(degree) + ".pdf"),
             )
 
-    return degree, coefs, cont, norm_fluxes
+    return degree, coefs, norm_fluxes, rangemask
 
 
 def norm_all(datapath, star, linewaves):
@@ -193,7 +194,8 @@ def norm_all(datapath, star, linewaves):
 
     Returns
     -------
-    Plot with the continuum fit
+    - Plot with the continuum fit for every line
+    - File with the polynomial coefficients of the continuum fit for all the lines
     """
     # check if the file with windows to fit the continuum exists
     window_file = datapath + star + "/" + star + "_cont_win.dat"
@@ -226,7 +228,7 @@ def norm_all(datapath, star, linewaves):
                     velos = velo(waves, lwave)
 
                     # normalize the spectrum around the line
-                    degree, coefs, cont, norm_fluxes = norm(
+                    degree, coefs, norm_fluxes, rangemask = norm(
                         velos,
                         fluxes,
                         lwave,
@@ -255,11 +257,11 @@ def norm_all(datapath, star, linewaves):
 
 
 if __name__ == "__main__":
+    # define the data path
     datapath = "/Users/mdecleir/Documents/Depletions/HST_data/"
-    stars = ["HD203938"]
 
-    # plotting properties for uniform plots
-    fs = 18
+    # define the star names
+    stars = ["HD203938"]
 
     # define the wavelenghts of the lines of interest
     line_waves = np.array([1239.9253, 1240.3947, 1355.5977, 2249.8768, 2260.7805])
