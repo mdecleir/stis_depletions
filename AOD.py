@@ -73,7 +73,7 @@ def AOD(velos, norm_fluxes, log_flam, vmin, vmax, plot=False):
     dv_array = np.around(np.diff(velos[intmask]), 12)
     if np.all(dv_array == dv_array[0]):
         dv = np.median(np.diff(velos[intmask]))
-        log_N = np.log10(np.sum(Nv[intmask] * dv))
+        log_N = np.log10(np.nansum(Nv[intmask] * dv))
         print(velos[intmask], Nv[intmask])
         return log_N
     else:
@@ -154,6 +154,7 @@ def AOD_all(datapath, star, linewaves, log_flams, vmin, vmax):
 
                     # add the column density to the table
                     coldens_table.add_row([lwave, log_N])
+                    print(coldens_table)
 
         # save the table
         coldens_table.write(
@@ -175,8 +176,8 @@ if __name__ == "__main__":
 
     # define the wavelenghts and oscillator strengths of the lines of interest
     line_waves = np.array([1239.9253, 1240.3947, 1355.5977, 2249.8768, 2260.7805])
-    line_waves = np.array([1239.9253])
-    log_flams = np.array([0.106])
+    line_waves = np.array([1239.9253, 1240.3947, 1355.5977, 2249.8768, 2260.7805])
+    log_flams = np.array([0.106, -0.355, -2.805, 0.612, 0.742])
 
     # normalize the spectrum around every line
     for star in stars:
